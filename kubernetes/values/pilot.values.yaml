@@ -1,0 +1,88 @@
+imagePullSecrets:
+  - name: geop-registry-secret
+
+php_kafka:
+  - name: kafka
+    command: ["php"]
+    args: [ "bin/console","messenger:consume", "kafka", "-vv" ]
+  - name: kafka_views
+    command: ["php"]
+    args: [ "bin/console","messenger:consume", "kafka_views", "-vv" ]
+  - name: kafka_user_search
+    command: ["php"]
+    args: [ "bin/console","messenger:consume", "kafka_user_search", "-vv" ]
+
+php:
+  image:
+    repository: $REPOSITORY
+    tag: $TAG
+  envs:
+# БД
+    - name: DATABASE_URL
+      value: "$DATABASE_URL_STAGING/$DATABASE_NAME"
+    - name: REDIS_URL
+      value: "$REDIS_URL_STAGING"
+    - name: LOCK_DSN
+      value: "flock"
+# Менеджеры очередей
+    - name: MESSENGER_TRANSPORT_DSN
+      value: "$MESSENGER_TRANSPORT_DSN"
+    - name: MESSENGER_VIEW_TRANSPORT_DSN
+      value: "$MESSENGER_VIEW_TRANSPORT_DSN"
+    - name: MESSENGER_USER_SEARCH_TRANSPORT_DSN
+      value: "$MESSENGER_USER_SEARCH_TRANSPORT_DSN"
+    - name: KAFKA_BROKERS
+      value: "$KAFKA_BROKERS"
+    - name: ENQUEUE_DSN
+      value: "$ENQUEUE_DSN"
+# Интеграции
+    - name: DICTIONARY_BASE_URL
+      value: "$API_GATEWAY_URL_STAGING"
+    - name: BASE_FILE_URL
+      value: "$API_GATEWAY_URL_STAGING"
+# КК
+    - name: KEYCLOAK_ADMIN_JWKS_URI
+      value: "$KEYCLOAK_ADMIN_JWKS_URI_STAGING"
+# S3
+    - name: S3_KEY
+      value: "$S3_ACCESS_KEY_STAGING"
+    - name: S3_SECRET
+      value: "$S3_SECRET_KEY_STAGING"
+    - name: S3_ENDPOINT
+      value: "$S3_ENDPOINT_STAGING"
+    - name: S3_BUCKET
+      value: "$S3_ENDPOINT_STAGING"
+# Сваггер
+    - name: SWAGGER_SERVER_URL
+      value: "$API_GATEWAY_URL_STAGING"
+  cronjob:
+    - name: "processFileRequests"
+      enabled: true
+      schedule: "*/2 * * * *"
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 3
+      command: [ "php" ]
+      args: [ "bin/console","app:process-file-requests" ]
+
+  cronjob:
+    - name: "pfr"
+      enabled: true
+      schedule: "*/2 * * * *"
+      successfulJobsHistoryLimit: 1
+      failedJobsHistoryLimit: 1
+      command: [ "php" ]
+      args: [ "bin/console","app:process-file-requests" ]
+
+nginx:
+  image:
+    repository: $REPOSITORY-nginx
+    tag: $TAG
+
+gravitee:
+  enabled: true
+  spec:
+    name: "[Pilot] Регистрация событий"
+    description: "МС Регистрация событий"
+    context_path: "/v1/event-registration"
+    target: ""
+    target_path: "/v1/event-registration"

@@ -1,0 +1,32 @@
+{
+  "formation": {
+    "web": {
+      "quantity": 1
+    },
+    "worker1": {
+      "quantity": 1
+    },
+    "worker2": {
+      "quantity": 1
+    }
+  },
+  "healthchecks": {
+    "web": [
+      {
+        "type":        "liveness",
+        "name":        "web check",
+        "description": "Checking if the app responds",
+        "path":        "/fpm_ping",
+        "attempts": 3,
+        "timeout": 1,
+        "wait": 1
+      }
+    ]
+  },
+  "cron": [
+    {
+      "command": "php bin/console app:process-file-requests",
+      "schedule": "*/2 * * * *"
+    }
+  ]
+}

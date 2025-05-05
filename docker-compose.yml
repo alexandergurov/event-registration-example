@@ -1,0 +1,69 @@
+version: "3.5"
+
+services:
+  event_registration_php:
+    build:
+      context: ./
+      target: app_php
+      args:
+        COMPOSER_AUTH_GITLAB_TOKEN: ${COMPOSER_AUTH_GITLAB_TOKEN}
+    environment:
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@event_registration_database:5432/${POSTGRES_DB}?serverVersion=${POSTGRES_VERSION}&charset=${POSTGRES_CHARSET}
+    networks:
+      - event_registration
+    depends_on:
+      - event_registration_database
+
+  event_registration_nginx:
+    build:
+      context: ./
+      target: app_nginx
+    environment:
+      - NGINX_HOST=${SERVER_NAME:-localhost}
+      - PHP_FPM_HOST=event_registration_php
+    ports:
+      # HTTP
+      - target: 80
+        published: ${HTTP_PORT:-80}
+        protocol: tcp
+      # HTTPS
+      - target: 443
+        published: ${HTTPS_PORT:-443}
+        protocol: tcp
+    depends_on:
+      - event_registration_php
+    networks:
+      - event_registration
+
+  event_registration_database:
+    image: postgres:${POSTGRES_VERSION:-14}-alpine
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-app}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-!ChangeMe!}
+      - POSTGRES_USER=${POSTGRES_USER:-app}
+    volumes:
+      - event_registration_db_data:/var/lib/postgresql/data
+    networks:
+      - event_registration
+
+  event_registration_redis:
+    image: 'redis:alpine'
+    volumes:
+      - event_registration_redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      retries: 3
+      timeout: 5s
+    networks:
+      - event_registration
+
+networks:
+  event_registration:
+    name: service_network
+    external: true
+
+volumes:
+  event_registration_db_data:
+  event_registration_redis_data:

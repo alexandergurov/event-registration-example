@@ -1,0 +1,14 @@
+enqueue:
+    default:
+        transport:
+            dsn: '%env(ENQUEUE_DSN)%'
+            global:
+                group.id: 'logRegistration'
+                metadata.broker.list: "%env(KAFKA_BROKERS)%"
+                batch.num.messages: '100'
+                queue.buffering.max.ms: '1'
+                compression.codec: 'snappy'
+                request.required.acks: '0'
+            commit_async: true
+
+        client: ~

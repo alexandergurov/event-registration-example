@@ -1,0 +1,16 @@
+framework:
+    messenger:
+        transports:
+            kafka:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+            kafka_views:
+                dsn: '%env(MESSENGER_VIEW_TRANSPORT_DSN)%'
+            kafka_user_search:
+                dsn: '%env(MESSENGER_USER_SEARCH_TRANSPORT_DSN)%'
+        routing:
+            'App\Messenger\Message\LogRegistrationMessage': kafka
+            'App\Messenger\Message\ViewLogMessage': kafka_views
+            'App\Messenger\Message\SearchMessage': kafka_user_search
+
+        serializer:
+            default_serializer: messenger.transport.symfony_serializer

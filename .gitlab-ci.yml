@@ -1,0 +1,19 @@
+include:
+  - project: $CI_YML_PROJECT_PATH
+    file:
+      - '/common/deployme.yml'
+      - '/common/geop.yml'
+      - '/dev/deployme.yml'
+      - '/staging/build.yml'
+      - '/staging/deploy.yml'
+      - '/pilot/deploy.yml'
+
+stages:
+  - build
+  - deploy
+
+variables:
+  APP_NAME: "ms-event-registration"
+  APP_NAME_STAGING: "ms-event-registration"
+  APP_URL: "https://api.cp.nda.url/v1/event-registration/doc"
+  BASE_IMAGE_PHP: "${BASE_IMAGE_PHP_KAFKA}"

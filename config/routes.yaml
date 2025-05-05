@@ -1,0 +1,19 @@
+controllers:
+    resource:
+        path: ../src/Controller/
+        namespace: App\Controller
+    type: attribute
+
+log_controllers:
+    resource:
+        path: ../src/Controller/Logs
+        namespace: App\Controller\Logs
+    type: attribute
+    prefix: '/v1/event-registration'
+
+file_controllers:
+    resource:
+        path: ../src/Controller/Files
+        namespace: App\Controller\Files
+    type: attribute
+    prefix: '/v1/event-registration'

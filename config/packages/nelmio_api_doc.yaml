@@ -1,0 +1,120 @@
+nelmio_api_doc:
+    documentation:
+        servers:
+            - url: '%env(SWAGGER_SERVER_URL)%'
+              description: Регистрация событий
+        info:
+            title:  Регистрация событий
+            description:  Регистрация событий
+            version: 1.0.0
+        security:
+            - Bearer: [ ]
+        components:
+            securitySchemes:
+                Bearer:
+                    type: http
+                    scheme: bearer
+                    bearerFormat: JWT
+            schemas:
+                Error:
+                    type: object
+                    properties:
+                        errorCode:
+                            type: integer
+                        errorCause:
+                            type: string
+
+                Errors:
+                    description: "Ошибки"
+                    type: object
+                    properties:
+                        errors:
+                            type: array
+                            items:
+                                $ref: "#/components/schemas/Error"
+
+                EventList:
+                    description: "Список событий"
+                    type: object
+                    properties:
+                        data:
+                            type: object
+                            properties:
+                                items:
+                                    type: array
+                                    items:
+                                        $ref: "#/components/schemas/Event_list"
+
+                FileRequestList:
+                    description: "Список заявок на создание файла"
+                    type: object
+                    properties:
+                        data:
+                            type: object
+                            properties:
+                                items:
+                                    type: array
+                                    items:
+                                        $ref: "#/components/schemas/FileRequest_list"
+
+                EventDetail:
+                    description: "Событие"
+                    type: object
+                    properties:
+                        data:
+                            type: object
+                            $ref: "#/components/schemas/Event_detail"
+
+                EventSearchList:
+                    description: "Список историй поиска"
+                    type: object
+                    properties:
+                        data:
+                            type: object
+                            properties:
+                                items:
+                                    type: array
+                                    items:
+                                        $ref: "#/components/schemas/Event_search_list"
+
+                EventInternalList:
+                    description: "Список объектов события"
+                    type: object
+                    properties:
+                        data:
+                            type: object
+                            properties:
+                                items:
+                                    type: array
+                                    items:
+                                        $ref: "#/components/schemas/Event_internal_list"
+
+                LogObjectList:
+                    description: "Список объектов события"
+                    type: object
+                    properties:
+                        data:
+                            type: object
+                            properties:
+                                items:
+                                    type: array
+                                    items:
+                                        $ref: "#/components/schemas/LogObject_list"
+
+    areas: # to filter documented areas
+        path_patterns:
+            - ^/v1/event-registration(?!/doc|$)
+
+
+    models:
+        names:
+            - { alias: Event_list, type: App\Entity\Log, groups: [ e_list ] }
+            - { alias: Event_search_list, type: App\Entity\Log, groups: [ e_search_list ] }
+            - { alias: Event_internal_list, type: App\Entity\Log, groups: [ e_internal_list ] }
+            - { alias: LogObject_list, type: App\Entity\LogObject, groups: [ log_object_list ] }
+            - { alias: Event_detail, type: App\Entity\Log, groups: [ e_detail ] }
+            - { alias: EventRequestDTO_create, type: App\Model\LogRequestDTO, groups: [ create ] }
+            - { alias: Event_created, type: App\Entity\Log, groups: [ e_created ] }
+            - { alias: FileRequest_list, type: App\Entity\FileRequest, groups: [ f_list ] }
+            - { alias: FileRequestDTO_create, type: App\Model\FileRequestDTO, groups: [ create ] }
+            - { alias: FileRequest_created, type: App\Entity\FileRequest, groups: [ f_created ] }

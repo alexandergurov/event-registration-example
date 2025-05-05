@@ -1,0 +1,199 @@
+version: "3.5"
+
+services:
+  event_registration_php:
+    build:
+      context: ./
+      target: app_php
+      args:
+        COMPOSER_AUTH_GITLAB_TOKEN: ${COMPOSER_AUTH_GITLAB_TOKEN}
+    volumes:
+      - ./:/srv/app
+      - /srv/app/var
+      - ./docker/php/conf.d/app.dev.ini:/usr/local/etc/php/conf.d/app.dev.ini:ro
+    environment:
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@event_registration_database:5432/${POSTGRES_DB}?serverVersion=${POSTGRES_VERSION}&charset=${POSTGRES_CHARSET}
+    networks:
+      - event_registration
+    depends_on:
+      - event_registration_database
+
+  event_registration_nginx:
+    build:
+      context: ./
+      target: app_nginx
+      args:
+        COMPOSER_AUTH_GITLAB_TOKEN: ${COMPOSER_AUTH_GITLAB_TOKEN}
+    volumes:
+      - ./public:/srv/app/public:ro
+      - ./docker/nginx/templates:/etc/nginx/templates
+    environment:
+      - NGINX_HOST=${SERVER_NAME:-localhost}
+      - PHP_FPM_HOST=event_registration_php
+    ports:
+      # HTTP
+      - target: 80
+        published: ${HTTP_PORT:-80}
+        protocol: tcp
+      # HTTPS
+      - target: 443
+        published: ${HTTPS_PORT:-443}
+        protocol: tcp
+    depends_on:
+      - event_registration_php
+    networks:
+      - event_registration
+
+  event_registration_database:
+    image: postgres:${POSTGRES_VERSION:-14}-alpine
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-app}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-!ChangeMe!}
+      - POSTGRES_USER=${POSTGRES_USER:-app}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - event_registration_db_data:/var/lib/postgresql/data
+    networks:
+      - event_registration
+
+  event_registration_redis:
+    image: 'redis:alpine'
+    volumes:
+      - event_registration_redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      retries: 3
+      timeout: 5s
+    networks:
+      - event_registration
+
+
+#******************************* For Local Development only ***************************
+#  kafka-ui:
+#    container_name: kafka-ui
+#    image: provectuslabs/kafka-ui:latest
+#    ports:
+#      - "8089:8080"
+#    depends_on:
+#      - kafka
+#      - schema-registry
+#      - kafka-connect
+#    environment:
+#      KAFKA_CLUSTERS_0_NAME: local
+#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:19092
+#      KAFKA_CLUSTERS_0_METRICS_PORT: 9997
+#      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:38081
+#      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: first
+#      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
+#      DYNAMIC_CONFIG_ENABLED: 'true'
+#    networks:
+#      - event_registration
+#
+#  zookeeper:
+#    image: confluentinc/cp-zookeeper:7.5.1
+#    hostname: zookeeper
+#    ports:
+#      - "32181:32181"
+#    environment:
+#      ZOOKEEPER_CLIENT_PORT: 32181
+#      ZOOKEEPER_TICK_TIME: 2000
+#      ZOOKEEPER_SYNC_LIMIT: 2
+#    networks:
+#      - event_registration
+#
+#  kafka:
+#    image: confluentinc/cp-kafka:7.5.1
+#    hostname: kafka
+#    ports:
+#      - "29092:29092"
+#    depends_on:
+#      - zookeeper
+#    environment:
+#      KAFKA_BROKER_ID: 1
+#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:32181
+#      KAFKA_ADVERTISED_HOST_NAME: kafka
+#      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:29092
+#      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#      ALLOW_PLAINTEXT_LISTENER: "yes"
+#    networks:
+#      - event_registration
+#
+#  schema-registry:
+#    image: confluentinc/cp-schema-registry:7.5.1
+#    hostname: schema-registry
+#    ports:
+#      - "38081:38081"
+#    depends_on:
+#      - kafka
+#    environment:
+#      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:19092
+#      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+#      SCHEMA_REGISTRY_LISTENERS: http://schema-registry:38081
+#      SCHEMA_REGISTRY_DEBUG: "true"
+#    networks:
+#      - event_registration
+#
+#  kafka-rest:
+#    image: confluentinc/cp-kafka-rest:7.5.1
+#    hostname: kafka-rest
+#    ports:
+#      - "38082:38082"
+#    depends_on:
+#      - schema-registry
+#    environment:
+#      KAFKA_REST_SCHEMA_REGISTRY_URL: schema-registry:38081
+#      KAFKA_REST_HOST_NAME: kafka-rest
+#      KAFKA_REST_LISTENERS: http://kafka-rest:38082
+#      KAFKA_REST_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:19092
+#    networks:
+#      - event_registration
+#
+#  kafka-connect:
+#    image: confluentinc/cp-kafka-connect:7.5.1
+#    hostname: kafka-connect
+#    ports:
+#      - "8083:8083"
+#    environment:
+#      CONNECT_BOOTSTRAP_SERVERS: "kafka:19092"
+#      CONNECT_REST_PORT: 38083
+#      CONNECT_GROUP_ID: compose-connect-group
+#      CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
+#      CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
+#      CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
+#      CONNECT_KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+#      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: 'http://kafka-schema-registry:38081'
+#      CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+#      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: 'http://kafka-schema-registry:38081'
+#      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+#      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+#      CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect"
+#      CONNECT_LOG4J_ROOT_LOGLEVEL: "INFO"
+#      CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"
+#      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "1"
+#      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "1"
+#      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "1"
+#      CONNECT_PLUGIN_PATH: '/usr/share/java,/etc/kafka-connect/jars'
+#    volumes:
+#      - ./connectors:/etc/kafka-connect/jars/
+#    networks:
+#      - event_registration
+#    depends_on:
+#      - zookeeper
+#      - kafka
+#      - schema-registry
+#      - kafka-rest
+
+networks:
+  event_registration:
+    name: service_network
+    driver: bridge
+    external: false
+
+volumes:
+  event_registration_db_data:
+  event_registration_redis_data:

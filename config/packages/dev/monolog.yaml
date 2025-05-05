@@ -1,0 +1,12 @@
+monolog:
+  handlers:
+    main:
+      type: stream
+      path: "%kernel.logs_dir%/%kernel.environment%.log"
+      level: debug
+      channels: ["!event"]
+    messenger:
+      type: stream
+      path: "php://stderr"
+      level: debug
+      channels: ["message_registration"]
